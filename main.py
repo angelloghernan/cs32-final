@@ -352,7 +352,7 @@ def is_in_checkmate(piece_positions) -> bool:
     for (_, piece) in piece_positions.items():
         if piece.color != my_color:
             continue
-        moves = piece.valid_moves()
+        moves = piece.valid_moves(piece_positions)
         if len(moves) > 0:
             return False
     return True
