@@ -4,6 +4,7 @@ from typing import Tuple
 
 import socket
 import select
+import copy
 
 root = tk.Tk()
 root.title("Multiplayer Chess")
@@ -37,18 +38,57 @@ class Piece:
         assert(color == "black" or color == "white")
 
     def valid_moves(self, piece_positions) -> List[Tuple[int, int]]:
+        moves = []
         if self.piece_type == "rook":
-            return self.rook_moves(piece_positions)
+            moves = self.rook_moves(piece_positions)
         elif self.piece_type == "knight":
-            return self.knight_moves(piece_positions)
+            moves = self.knight_moves(piece_positions)
         elif self.piece_type == "queen":
-            return self.rook_moves(piece_positions) + self.bishop_moves(piece_positions)
+            moves = self.rook_moves(piece_positions) + self.bishop_moves(piece_positions)
         elif self.piece_type == "king":
-            return self.king_moves(piece_positions)
+            moves = self.king_moves(piece_positions)
         elif self.piece_type == "bishop":
-            return self.bishop_moves(piece_positions)
+            moves = self.bishop_moves(piece_positions)
         else:
-            return self.pawn_moves(piece_positions)
+            moves = self.pawn_moves(piece_positions)
+
+        moves = self.prune_check_moves(moves, piece_positions)
+        return moves
+
+    def prune_check_moves(self, moves: List[Tuple[int, int]], piece_positions) -> List[Tuple[int, int]]:
+        global my_king_pos
+
+        final_moves = copy.deepcopy(moves)
+
+        king_row, king_col = my_king_pos
+
+        old_row, old_col = self.row, self.col
+
+        is_king = self.piece_type == "king"
+
+        scratch = copy.deepcopy(piece_positions)
+        scratch.pop((self.row, self.col))
+
+        for (row, col) in moves:
+            piece = scratch.get((row, col))
+            if piece:
+                scratch.pop((row, col))
+
+            self.row, self.col = row, col
+            scratch[(row, col)] = self
+
+            if is_king:
+                king_row, king_col = row, col
+
+            if is_in_mate(king_row, king_col, scratch):
+                final_moves.remove((row, col))
+
+            scratch.pop((row, col))
+            if piece:
+                scratch[(row, col)] = piece
+
+        self.row, self.col = old_row, old_col
+        return final_moves
     
     def rook_moves(self, piece_positions) -> List[Tuple[int, int]]:
         moves = []
@@ -280,7 +320,7 @@ def listen_and_decode():
 def is_in_mate(king_row, king_col, piece_positions) -> bool:
     global my_color
     king = piece_positions.get((king_row, king_col))
-    assert(king)
+    assert(king and king.piece_type == "king" and king.color == my_color)
 
     # Check for pawns first in the unlikely case that happens.
     dxs_dys = [(-1, -1), (-1, 1)]
