@@ -348,6 +348,15 @@ def is_in_mate(king_row, king_col, piece_positions) -> bool:
     # Can't be captured if we get here
     return False
 
+def is_in_checkmate(piece_positions) -> bool:
+    for (_, piece) in piece_positions.items():
+        if piece.color != my_color:
+            continue
+        moves = piece.valid_moves()
+        if len(moves) > 0:
+            return False
+    return True
+
 def draw_board(_=None, highlight_list=[]):
     global clicked_col
     global clicked_row
@@ -401,6 +410,8 @@ def draw_board(_=None, highlight_list=[]):
 
             if piece and piece.piece_type == "king" and piece.color == my_color and \
                is_in_mate(king_row, king_col, piece_positions):
+                if is_in_checkmate(piece_positions):
+                    print("Checkmate! You lose.")
                 color = "pink"
 
             canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="black")
