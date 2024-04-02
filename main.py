@@ -239,11 +239,8 @@ def handle_click(event):
 
 def decode_message(msg: str):
     global piece_positions
-    print(f"message was {msg}")
     row_1, col_1 = 7 - int(msg[0]), int(msg[1])
     row_2, col_2 = 7 - int(msg[2]), int(msg[3])
-
-    print(f"Check for piece at {row_1} {col_1}")
 
     piece = piece_positions.get((row_1, col_1))
     assert(piece)
@@ -280,7 +277,6 @@ def listen_and_decode():
 
 
 def draw_board(_=None, highlight_list=[]):
-    print("Draw board called")
     global clicked_col
     global clicked_row
     global piece_positions
