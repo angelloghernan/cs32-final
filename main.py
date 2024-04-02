@@ -400,8 +400,6 @@ def draw_board(_=None, highlight_list=[]):
             else:
                 color = "gray"
 
-            if (row == clicked_row and col == clicked_col):
-                color = "red"
 
             if (row, col) in highlight_list:
                 color = "blue"
@@ -413,6 +411,9 @@ def draw_board(_=None, highlight_list=[]):
                 if is_in_checkmate(piece_positions):
                     print("Checkmate! You lose.")
                 color = "pink"
+
+            if (row == clicked_row and col == clicked_col):
+                color = "red"
 
             canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="black")
 
