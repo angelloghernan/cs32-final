@@ -2,16 +2,29 @@ import tkinter as tk
 from typing import List
 from typing import Tuple
 
+import socket
+import select
+
 root = tk.Tk()
 root.title("Multiplayer Chess")
+root.resizable(False, False)
+
+host_ip = "localhost"
 
 board_size = 8
 cell_size = 60
 
 clicked_row, clicked_col = None, None
 
-canvas = tk.Canvas(root, width=board_size * cell_size, height=board_size * cell_size)
-canvas.pack(fill=tk.BOTH, expand=True)
+my_color = "white"
+my_turn = True
+
+canvas = None
+# canvas.pack(fill=tk.BOTH, expand=True)
+
+on_title_screen = True
+
+my_socket = None
 
 piece_images = {}
 piece_images["king_white"] = tk.PhotoImage(file="king_white.png").subsample(32)
@@ -187,6 +200,10 @@ def handle_click(event):
     global clicked_col  
     global clicked_row
     global piece_positions
+    global my_socket
+    global my_turn
+
+    assert(my_socket)
 
     highlight_list = []
     
@@ -194,7 +211,7 @@ def handle_click(event):
         clicked_col = event.x // cell_size
         clicked_row = event.y // cell_size
         piece = piece_positions.get((clicked_row, clicked_col))
-        if not piece:
+        if not piece or piece.color != my_color or not my_turn:
             clicked_row, clicked_col = None, None
         else:
             highlight_list = piece.valid_moves(piece_positions)
@@ -204,23 +221,85 @@ def handle_click(event):
         move_row = event.y // cell_size
         piece = piece_positions.get((clicked_row, clicked_col))
         if piece and piece.is_valid_move(move_row, move_col, piece_positions):
+            msg = str(piece.row) + str(piece.col) + str(move_row) + str(move_col)
             piece.row = move_row
             piece.col = move_col
             piece.first_move = False
             piece_positions.pop((clicked_row, clicked_col))
             piece_positions[(move_row, move_col)] = piece
-            # print(f"Move to {move_row} {move_col} from {clicked_row} {clicked_col}")
+
+
+            my_socket.sendall(msg.encode())
+            my_turn = False
 
 
         clicked_row, clicked_col = None, None
 
     draw_board(None, highlight_list)
 
-def draw_board(_event=None, highlight_list=[]):
+def decode_message(msg: str):
+    global piece_positions
+    print(f"message was {msg}")
+    row_1, col_1 = 7 - int(msg[0]), int(msg[1])
+    row_2, col_2 = 7 - int(msg[2]), int(msg[3])
+
+    print(f"Check for piece at {row_1} {col_1}")
+
+    piece = piece_positions.get((row_1, col_1))
+    assert(piece)
+
+    piece_positions.pop((row_1, col_1))
+
+    if piece_positions.get((row_2, col_2)):
+        piece_positions.pop((row_2, col_2))
+    
+    piece.row = row_2
+    piece.col = col_2
+    piece_positions[(row_2, col_2)] = piece
+
+def listen_and_decode():
+    global my_turn
+    global my_socket
+
+    assert(my_socket)
+
+    if not my_turn:
+        readable, _, _ = select.select([my_socket], [], [], 0.01)
+        if readable:
+            # Read data from the client
+            data = my_socket.recv(4)
+            if data:
+                decode_message(data.decode())
+                my_turn = True
+                draw_board()
+            else:
+                # Client disconnected, game can't continue
+                return
+        else:
+            root.after(100, listen_and_decode)
+
+
+def draw_board(_=None, highlight_list=[]):
+    print("Draw board called")
     global clicked_col
     global clicked_row
     global piece_positions
+    global canvas
+    global on_title_screen
+    global my_socket
+    global my_turn
+
+    if on_title_screen:
+        draw_title_screen()
+        return
+
+    if not canvas:
+       canvas = tk.Canvas(root, width=board_size * cell_size, height=board_size * cell_size)
+       canvas.bind("<Button-1>", handle_click)
+
     canvas.delete("all")
+
+    canvas.pack(fill=tk.BOTH, expand=True)
 
     canvas_width = canvas.winfo_width()
     canvas_height = canvas.winfo_height()
@@ -258,10 +337,117 @@ def draw_board(_event=None, highlight_list=[]):
                 y = y1 + new_cell_size // 2
                 canvas.create_image(x, y, image=image)
 
+    if not my_turn:
+        listen_and_decode()
 
-draw_board()
+def reverse_piece_map():
+    global piece_positions
+    new_map = {}
+    for (row, col), piece in piece_positions.items():
+        row = piece.row = 7 - row
+        new_map[(row, col)] = piece
+    
+    piece_positions = new_map
 
-root.bind('<Configure>', draw_board)
-canvas.bind("<Button-1>", handle_click)
+def connect():
+    global on_title_screen
+    global my_socket
+    global my_color
+    global my_turn
+    
+    my_color = "black"
+    reverse_piece_map()
+    on_title_screen = False
+    my_turn = False
 
-root.mainloop()
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    container_frame = tk.Frame(root)
+    container_frame.pack(padx=80, pady=80, fill=tk.BOTH)
+    title_label = tk.Label(container_frame, 
+                           text="Trying to connect...", 
+                           font=("Arial", 24, "bold"))
+    title_label.pack(pady=20)
+    root.update()
+    root.update_idletasks()
+
+    my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    my_socket.setblocking(False)
+    try:
+        my_socket.connect(('localhost', 12345))
+    except BlockingIOError:
+        pass  # Connection is in progress, will be handled by select
+
+    while True:
+        _, writable, _ = select.select([], [my_socket], [], 0.1)
+
+        if my_socket in writable:
+            print("Connected to server")
+            break
+
+        root.update()
+        root.update_idletasks()
+        
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    draw_board()
+    root.bind('<Configure>', draw_board)
+
+def host():
+    global on_title_screen
+    global my_socket
+    on_title_screen = False
+    for widget in root.winfo_children():
+        widget.destroy()
+    container_frame = tk.Frame(root)
+    container_frame.pack(padx=80, pady=80, fill=tk.BOTH)
+    title_label = tk.Label(container_frame, 
+                           text="Waiting for connection...", 
+                           font=("Arial", 24, "bold"))
+    title_label.pack(pady=20)
+    
+    server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    server_sock.setblocking(False)
+
+    server_sock.bind(('localhost', 12345))
+
+    server_sock.listen()
+
+    while True:
+        readable, _, _ = select.select([server_sock], [], [], 0.1)
+        if server_sock in readable:
+            my_socket, address = server_sock.accept()
+            print(f"Accepted connection from ", address)
+            break
+        root.update()
+        root.update_idletasks()
+
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    draw_board()
+    root.bind('<Configure>', draw_board)
+
+def draw_title_screen():
+    container_frame = tk.Frame(root)
+    container_frame.pack(padx=80, pady=80, fill=tk.BOTH)
+
+    title_label = tk.Label(container_frame, text="Chess", font=("Arial", 24, "bold"))
+    title_label.pack(pady=20)
+
+    button_frame = tk.Frame(container_frame)
+    button_frame.pack(pady=20)
+
+    connect_button = tk.Button(button_frame, text="Connect", padx=20, pady=10, command=connect)
+    connect_button.pack(side=tk.LEFT, padx=10)
+
+    host_button = tk.Button(button_frame, text="Host", padx=20, pady=10, command=host)
+    host_button.pack(side=tk.LEFT, padx=10)
+
+if __name__ == '__main__':
+    draw_board()
+    root.mainloop()
+
