@@ -27,18 +27,18 @@ on_title_screen = True
 my_socket = None
 
 piece_images = {}
-piece_images["king_white"] = tk.PhotoImage(file="king_white.png").subsample(32)
-piece_images["queen_white"] = tk.PhotoImage(file="queen_white.png").subsample(32)
-piece_images["rook_white"] = tk.PhotoImage(file="rook_white.png").subsample(32)
-piece_images["bishop_white"] = tk.PhotoImage(file="bishop_white.png").subsample(32)
-piece_images["knight_white"] = tk.PhotoImage(file="knight_white.png").subsample(32)
-piece_images["pawn_white"] = tk.PhotoImage(file="pawn_white.png").subsample(32)
-piece_images["king_black"] = tk.PhotoImage(file="king_black.png").subsample(32)
-piece_images["queen_black"] = tk.PhotoImage(file="queen_black.png").subsample(32)
-piece_images["rook_black"] = tk.PhotoImage(file="rook_black.png").subsample(32)
-piece_images["bishop_black"] = tk.PhotoImage(file="bishop_black.png").subsample(32)
-piece_images["knight_black"] = tk.PhotoImage(file="knight_black.png").subsample(32)
-piece_images["pawn_black"] = tk.PhotoImage(file="pawn_black.png").subsample(32)
+piece_images["king_white"] = tk.PhotoImage(file="assets/king_white.png").subsample(32)
+piece_images["queen_white"] = tk.PhotoImage(file="assets/queen_white.png").subsample(32)
+piece_images["rook_white"] = tk.PhotoImage(file="assets/rook_white.png").subsample(32)
+piece_images["bishop_white"] = tk.PhotoImage(file="assets/bishop_white.png").subsample(32)
+piece_images["knight_white"] = tk.PhotoImage(file="assets/knight_white.png").subsample(32)
+piece_images["pawn_white"] = tk.PhotoImage(file="assets/pawn_white.png").subsample(32)
+piece_images["king_black"] = tk.PhotoImage(file="assets/king_black.png").subsample(32)
+piece_images["queen_black"] = tk.PhotoImage(file="assets/queen_black.png").subsample(32)
+piece_images["rook_black"] = tk.PhotoImage(file="assets/rook_black.png").subsample(32)
+piece_images["bishop_black"] = tk.PhotoImage(file="assets/bishop_black.png").subsample(32)
+piece_images["knight_black"] = tk.PhotoImage(file="assets/knight_black.png").subsample(32)
+piece_images["pawn_black"] = tk.PhotoImage(file="assets/pawn_black.png").subsample(32)
 
 
 class Piece:
