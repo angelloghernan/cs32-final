@@ -10,6 +10,7 @@ root.title("Multiplayer Chess")
 root.resizable(False, False)
 
 host_ip = "localhost"
+host_port = 12345
 
 board_size = 8
 cell_size = 60
@@ -18,28 +19,12 @@ clicked_row, clicked_col = None, None
 
 my_color = "white"
 my_turn = True
-
-canvas = None
-# canvas.pack(fill=tk.BOTH, expand=True)
-
+my_king_pos = (7, 4) # for quick retrieval later
 on_title_screen = True
 
+canvas = None
+
 my_socket = None
-
-piece_images = {}
-piece_images["king_white"] = tk.PhotoImage(file="assets/king_white.png").subsample(32)
-piece_images["queen_white"] = tk.PhotoImage(file="assets/queen_white.png").subsample(32)
-piece_images["rook_white"] = tk.PhotoImage(file="assets/rook_white.png").subsample(32)
-piece_images["bishop_white"] = tk.PhotoImage(file="assets/bishop_white.png").subsample(32)
-piece_images["knight_white"] = tk.PhotoImage(file="assets/knight_white.png").subsample(32)
-piece_images["pawn_white"] = tk.PhotoImage(file="assets/pawn_white.png").subsample(32)
-piece_images["king_black"] = tk.PhotoImage(file="assets/king_black.png").subsample(32)
-piece_images["queen_black"] = tk.PhotoImage(file="assets/queen_black.png").subsample(32)
-piece_images["rook_black"] = tk.PhotoImage(file="assets/rook_black.png").subsample(32)
-piece_images["bishop_black"] = tk.PhotoImage(file="assets/bishop_black.png").subsample(32)
-piece_images["knight_black"] = tk.PhotoImage(file="assets/knight_black.png").subsample(32)
-piece_images["pawn_black"] = tk.PhotoImage(file="assets/pawn_black.png").subsample(32)
-
 
 class Piece:
     def __init__(self, name: str, piece_type: str, color: str, row: int, col: int):
@@ -159,7 +144,6 @@ class Piece:
     
     def is_valid_move(self, row: int, col: int, piece_positions) -> bool:
         return (row, col) in self.valid_moves(piece_positions)
-        
 
 piece_positions = {
     (0, 0): Piece("rook_black", "rook", "black", 0, 0),
@@ -196,12 +180,27 @@ piece_positions = {
     (6, 7): Piece("pawn_white", "pawn", "white", 6, 7),
 }
 
+piece_images = {}
+piece_images["king_white"] = tk.PhotoImage(file="assets/king_white.png").subsample(32)
+piece_images["queen_white"] = tk.PhotoImage(file="assets/queen_white.png").subsample(32)
+piece_images["rook_white"] = tk.PhotoImage(file="assets/rook_white.png").subsample(32)
+piece_images["bishop_white"] = tk.PhotoImage(file="assets/bishop_white.png").subsample(32)
+piece_images["knight_white"] = tk.PhotoImage(file="assets/knight_white.png").subsample(32)
+piece_images["pawn_white"] = tk.PhotoImage(file="assets/pawn_white.png").subsample(32)
+piece_images["king_black"] = tk.PhotoImage(file="assets/king_black.png").subsample(32)
+piece_images["queen_black"] = tk.PhotoImage(file="assets/queen_black.png").subsample(32)
+piece_images["rook_black"] = tk.PhotoImage(file="assets/rook_black.png").subsample(32)
+piece_images["bishop_black"] = tk.PhotoImage(file="assets/bishop_black.png").subsample(32)
+piece_images["knight_black"] = tk.PhotoImage(file="assets/knight_black.png").subsample(32)
+piece_images["pawn_black"] = tk.PhotoImage(file="assets/pawn_black.png").subsample(32)
+
 def handle_click(event):
     global clicked_col  
     global clicked_row
     global piece_positions
     global my_socket
     global my_turn
+    global my_king_pos
 
     assert(my_socket)
 
@@ -231,6 +230,9 @@ def handle_click(event):
 
             my_socket.sendall(msg.encode())
             my_turn = False
+
+            if piece.piece_type == "king":
+                my_king_pos = (piece.row, piece.col)
 
 
         clicked_row, clicked_col = None, None
@@ -275,6 +277,36 @@ def listen_and_decode():
         else:
             root.after(100, listen_and_decode)
 
+def is_in_mate(king_row, king_col, piece_positions) -> bool:
+    global my_color
+    king = piece_positions.get((king_row, king_col))
+    assert(king)
+
+    # Check for pawns first in the unlikely case that happens.
+    dxs_dys = [(-1, -1), (-1, 1)]
+    for (dx, dy) in dxs_dys:
+        pawn = piece_positions.get((king_row + dx, king_col + dy))
+        if pawn and pawn.color != my_color and pawn.piece_type == "pawn":
+            return True
+
+    # We can actually reuse the rook/bishop/knight move functions for the rest.
+    for (row, col) in king.rook_moves(piece_positions):
+        piece = piece_positions.get((row, col))
+        if piece and piece.color != my_color and (piece.piece_type == "rook" or piece.piece_type == "queen"):
+            return True
+
+    for (row, col) in king.bishop_moves(piece_positions):
+        piece = piece_positions.get((row, col))
+        if piece and piece.color != my_color and (piece.piece_type == "bishop" or piece.piece_type == "queen"):
+            return True
+
+    for (row, col) in king.knight_moves(piece_positions):
+        piece = piece_positions.get((row, col))
+        if piece and piece.color != my_color and piece.piece_type == "knight":
+            return True
+
+    # Can't be captured if we get here
+    return False
 
 def draw_board(_=None, highlight_list=[]):
     global clicked_col
@@ -325,6 +357,12 @@ def draw_board(_=None, highlight_list=[]):
             if (row, col) in highlight_list:
                 color = "blue"
 
+            king_row, king_col = my_king_pos
+
+            if piece and piece.piece_type == "king" and piece.color == my_color and \
+               is_in_mate(king_row, king_col, piece_positions):
+                color = "pink"
+
             canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="black")
 
             if piece:
@@ -338,6 +376,8 @@ def draw_board(_=None, highlight_list=[]):
 
 def reverse_piece_map():
     global piece_positions
+    global my_king_pos
+
     new_map = {}
     for (row, col), piece in piece_positions.items():
         row = piece.row = 7 - row
@@ -371,7 +411,7 @@ def connect():
     my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     my_socket.setblocking(False)
     try:
-        my_socket.connect(('localhost', 12345))
+        my_socket.connect(('localhost', host_port))
     except BlockingIOError:
         pass  # Connection is in progress, will be handled by select
 
@@ -408,7 +448,7 @@ def host():
 
     server_sock.setblocking(False)
 
-    server_sock.bind(('localhost', 12345))
+    server_sock.bind(('localhost', host_port))
 
     server_sock.listen()
 
