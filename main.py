@@ -35,6 +35,7 @@ class Piece:
         self.row = row
         self.col = col
         self.first_move = True
+        self.en_passant = False
         assert(color == "black" or color == "white")
 
     def valid_moves(self, piece_positions) -> List[Tuple[int, int]]:
@@ -174,11 +175,20 @@ class Piece:
         piece_diag_left = piece_positions.get((self.row - 1, self.col - 1))
         piece_diag_right = piece_positions.get((self.row - 1, self.col + 1))
 
-        if piece_diag_left and piece_diag_left.color != self.color:
-            moves.append((self.row - 1, self.col -1))
+        piece_check = [piece_diag_left, piece_diag_right]
 
-        if piece_diag_right and piece_diag_right.color != self.color:
-            moves.append((self.row - 1, self.col + 1))
+        for piece in piece_check:
+            if piece and piece.color != self.color:
+                moves.append((self.row - 1, piece.col))
+
+        # Check for en passant
+        piece_left = piece_positions.get((self.row, self.col - 1))
+        piece_right = piece_positions.get((self.row, self.col + 1))
+        piece_check = [piece_left, piece_right]
+
+        for piece in piece_check:
+            if piece and piece.en_passant and piece.color != self.color:
+                moves.append((self.row - 1, piece.col))
             
         return moves
     
@@ -261,8 +271,12 @@ def handle_click(event):
         piece = piece_positions.get((clicked_row, clicked_col))
         if piece and piece.is_valid_move(move_row, move_col, piece_positions):
             msg = str(piece.row) + str(piece.col) + str(move_row) + str(move_col)
+            piece.en_passant = piece.first_move and \
+                               piece.piece_type == "pawn" and  \
+                               piece.row == move_row - 2
             piece.row = move_row
             piece.col = move_col
+
             piece.first_move = False
             piece_positions.pop((clicked_row, clicked_col))
             piece_positions[(move_row, move_col)] = piece
