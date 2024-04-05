@@ -271,9 +271,13 @@ def handle_click(event):
         piece = piece_positions.get((clicked_row, clicked_col))
         if piece and piece.is_valid_move(move_row, move_col, piece_positions):
             msg = str(piece.row) + str(piece.col) + str(move_row) + str(move_col)
-            piece.en_passant = piece.first_move and \
-                               piece.piece_type == "pawn" and  \
-                               piece.row == move_row - 2
+
+            if piece.piece_type == "pawn" and move_col != piece.col:
+                en_passant_piece = piece_positions.get((piece.row, move_col))
+                if en_passant_piece:
+                    piece_positions.pop((piece.row, move_col))
+
+                    
             piece.row = move_row
             piece.col = move_col
 
@@ -305,7 +309,17 @@ def decode_message(msg: str):
 
     if piece_positions.get((row_2, col_2)):
         piece_positions.pop((row_2, col_2))
-    
+
+    piece.en_passant = piece.first_move and \
+                       piece.piece_type == "pawn" and \
+                       row_2 == piece.row + 2
+
+    if piece.piece_type == "pawn" and col_2 != piece.col:
+        en_passant_piece = piece_positions.get((piece.row, col_2))
+        if en_passant_piece:
+            piece_positions.pop((piece.row, col_2))
+
+    piece.first_move = False
     piece.row = row_2
     piece.col = col_2
     piece_positions[(row_2, col_2)] = piece
