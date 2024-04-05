@@ -345,6 +345,11 @@ def is_in_mate(king_row, king_col, piece_positions) -> bool:
         if piece and piece.color != my_color and piece.piece_type == "knight":
             return True
 
+    for (row, col) in king.king_moves(piece_positions):
+        piece = piece_positions.get((row, col))
+        if piece and piece.color != my_color and piece.piece_type == "king":
+            return True
+
     # Can't be captured if we get here
     return False
 
