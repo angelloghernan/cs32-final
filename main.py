@@ -37,7 +37,8 @@ class Piece:
         self.first_move = True
         self.en_passant = False
         assert(color == "black" or color == "white")
-
+    
+    # return all valid moves for this piece
     def valid_moves(self, piece_positions) -> List[Tuple[int, int]]:
         moves = []
         if self.piece_type == "rook":
@@ -56,6 +57,12 @@ class Piece:
         moves = self.prune_check_moves(moves, piece_positions)
         return moves
 
+    # prune any moves that would result in a check so that we don't display them when trying
+    # to make a move.
+    # 
+    # unfortunately, there's no better way to do this than brute forcing all next positions and
+    # seeing if they would result in a check. but since the upper bound of moves is low, this 
+    # isn't a huge deal.
     def prune_check_moves(self, moves: List[Tuple[int, int]], piece_positions) -> List[Tuple[int, int]]:
         global my_king_pos
 
@@ -91,6 +98,8 @@ class Piece:
         self.row, self.col = old_row, old_col
         return final_moves
     
+    # all the proceeding code "X"_moves is just for getting the valid moves of the 
+    # given piece type "X"
     def rook_moves(self, piece_positions) -> List[Tuple[int, int]]:
         moves = []
         dxs_dys = [(-1, 0), (1, 0), (0, -1), (0, 1)]
@@ -271,6 +280,8 @@ def handle_click(event):
         move_col = event.x // cell_size
         move_row = event.y // cell_size
         piece = piece_positions.get((clicked_row, clicked_col))
+        # If it's a valid move, then make the move & send. Extra check for removing an 
+        # en passant piece, since it kills a target on a square other than the square moved to.
         if piece and piece.is_valid_move(move_row, move_col, piece_positions):
             msg = str(piece.row) + str(piece.col) + str(move_row) + str(move_col)
 
@@ -303,6 +314,8 @@ def handle_click(event):
 
 def decode_message(msg: str):
     global piece_positions
+    # Message format is just the rows and columns of the move
+    # e.g. 1234 moves (1,2) to (3,4)
     row_1, col_1 = 7 - int(msg[0]), int(msg[1])
     row_2, col_2 = 7 - int(msg[2]), int(msg[3])
 
@@ -318,6 +331,7 @@ def decode_message(msg: str):
                        piece.piece_type == "pawn" and \
                        row_2 == piece.row + 2
 
+    # special case for en passant, since captured piece is diff
     if piece.piece_type == "pawn" and col_2 != piece.col:
         en_passant_piece = piece_positions.get((piece.row, col_2))
         if en_passant_piece:
@@ -464,6 +478,8 @@ def draw_board(_=None, highlight_list=[]):
         listen_and_decode()
 
 def reverse_piece_map():
+    # reverse the pieces for the "client" side, so that pieces
+    # show on the other side of the board
     global piece_positions
     global my_king_pos
 
