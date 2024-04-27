@@ -257,6 +257,7 @@ def handle_click(event):
     highlight_list = []
     
     if clicked_row is None:
+        # Player hasn't selected anything yet. Highlight any clicked piece.
         clicked_col = event.x // cell_size
         clicked_row = event.y // cell_size
         piece = piece_positions.get((clicked_row, clicked_col))
@@ -265,6 +266,7 @@ def handle_click(event):
         else:
             highlight_list = piece.valid_moves(piece_positions)
     else:
+        # Player wants to move a piece or unselect the piece.
         assert(clicked_col is not None)
         move_col = event.x // cell_size
         move_row = event.y // cell_size
@@ -285,6 +287,8 @@ def handle_click(event):
             piece_positions.pop((clicked_row, clicked_col))
             piece_positions[(move_row, move_col)] = piece
 
+            for (_, piece) in piece_positions.items():
+                piece.en_passant = False
 
             my_socket.sendall(msg.encode())
             my_turn = False
