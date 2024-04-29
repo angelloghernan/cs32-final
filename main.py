@@ -1,3 +1,9 @@
+# Change this if you want to connect with another computer :)
+# If hosting, this will be the ip and port you use.
+# If connecting, this will be the ip and port you connect to.
+host_ip = "localhost"
+host_port = 12345
+
 import tkinter as tk
 from typing import List
 from typing import Tuple
@@ -10,8 +16,6 @@ root = tk.Tk()
 root.title("Multiplayer Chess")
 root.resizable(False, False)
 
-host_ip = "localhost"
-host_port = 12345
 
 board_size = 8
 cell_size = 60
