@@ -305,11 +305,11 @@ def handle_click(event):
             for (_, piece) in piece_positions.items():
                 piece.en_passant = False
 
-            my_socket.sendall(msg.encode())
-            my_turn = False
-
             if piece.piece_type == "king":
                 my_king_pos = (piece.row, piece.col)
+
+            my_socket.sendall(msg.encode())
+            my_turn = False
 
 
         clicked_row, clicked_col = None, None
@@ -416,6 +416,7 @@ def draw_board(_=None, highlight_list=[]):
     global clicked_col
     global clicked_row
     global piece_positions
+    global my_king_pos
     global canvas
     global on_title_screen
     global my_socket
@@ -500,6 +501,7 @@ def connect():
     global my_color
     global my_turn
     
+    # If we are connecting, we will be the black color
     my_color = "black"
     reverse_piece_map()
     on_title_screen = False
